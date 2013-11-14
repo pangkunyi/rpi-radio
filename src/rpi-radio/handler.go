@@ -85,6 +85,7 @@ var (
 	maxSize           = 20
 	BASE_FOLDER       = pcs.OPEN_DIR
 	folder            = ""
+	prefixLen         = len(BASE_FOLDER) + 1
 )
 
 func sendText(w http.ResponseWriter, text string) {
@@ -109,6 +110,9 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 			maxSize = _maxSize
 		}
 		folder = r.FormValue("folder")
+		if folder != "" {
+			prefixLen = len(BASE_FOLDER) + len(folder) + 2
+		}
 		gotoIndex(w, r)
 	}
 }
@@ -160,7 +164,7 @@ func playHandler(w http.ResponseWriter, r *http.Request) {
 		sendErr(w, err)
 		return
 	} else {
-		list = random(list, 5)
+		list = random(list, maxSize)
 		fmt.Printf("ready playlist:\n%#v\n", list)
 		go func(list []string, _idx int32) {
 			for _, fi := range list {
@@ -207,7 +211,7 @@ func playlist() (list []string, err error) {
 		list = make([]string, 0)
 		for _, fi := range resp.Files {
 			if strings.HasSuffix(fi.Path, ".mp3") {
-				list = append(list, fmt.Sprintf("http://127.0.0.1:%d/music/%s", PORT, re.ReplaceAllString(url.QueryEscape(fi.Path[len(BASE_FOLDER)+len(folder)+1:]), "%20")))
+				list = append(list, fmt.Sprintf("http://127.0.0.1:%d/music/%s", PORT, re.ReplaceAllString(url.QueryEscape(fi.Path[prefixLen:]), "%20")))
 			}
 		}
 	}
