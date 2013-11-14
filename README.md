@@ -14,7 +14,6 @@ github.com/gorilla/mux
 1, git clone git@github.com:pangkunyi/rpi-radio.git
 2, make dep
 3, make install
-4, make run
 ```
 
 ###配置
@@ -43,6 +42,6 @@ make run
 
 ###访问
 ```
-http://127.0.0.1:8080/
+http://127.0.0.1:8808/
 ```
-由于偷懒，8080端口硬编码了
+由于偷懒，8808端口硬编码了
