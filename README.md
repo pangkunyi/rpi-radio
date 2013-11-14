@@ -14,7 +14,6 @@ github.com/gorilla/mux
 1, git clone git@github.com:pangkunyi/rpi-radio.git
 2, make dep
 3, make install
-4, make run
 ```
 
 ###配置
