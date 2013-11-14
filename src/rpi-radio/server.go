@@ -3,7 +3,13 @@ package main
 import (
 	"github.com/gorilla/mux"
 	"net/http"
+	_ "net/http/pprof"
 	"player"
+	"strconv"
+)
+
+const (
+	PORT = 8808
 )
 
 func main() {
@@ -14,8 +20,10 @@ func main() {
 	r.HandleFunc("/play", playHandler)
 	r.HandleFunc("/switch", pauseOrResumeHandler)
 	r.HandleFunc("/next", nextHandler)
+	r.HandleFunc("/settings", settingsHandler)
+	r.HandleFunc("/", indexHandler)
 	http.Handle("/", r)
-	if err := http.ListenAndServe(":8808", nil); err != nil {
+	if err := http.ListenAndServe(":"+strconv.Itoa(PORT), nil); err != nil {
 		panic(err)
 	}
 }

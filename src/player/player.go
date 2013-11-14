@@ -9,49 +9,57 @@ import (
 )
 
 var (
-	cmd     *exec.Cmd
-	inPipe  io.WriteCloser
-	outPipe *bufio.Reader
-	ch      = make(chan int)
+	inPipe   io.WriteCloser
+	outPipe  *bufio.Reader
+	statusCh = make(chan int, 1) //0: stop, 1: pausing
 )
 
-func PlayAndWait(audio string) error {
-	if err := Stop(); err != nil {
-		return err
+/* would be block if can not play a new song */
+func ReadyToPlay() {
+	for {
+		if status := <-statusCh; status == 0 {
+			break
+		}
+		fmt.Println("wait for status 0")
 	}
-	if audio == "" {
-		return nil
-	}
-	loadCmd := "l " + audio + "\n"
-	if _, err := inPipe.Write([]byte(loadCmd)); err != nil {
-		return err
-	}
+}
 
-	result := 1
-	for result == 1 { // wait for stop
-		result = <-ch
-		fmt.Println("play: ", result)
+/** make player can be ready to play again */
+func ResetToPlay() {
+	statusCh <- 0
+}
+
+/* not thread safe */
+func IsStop() bool {
+	select {
+	case status := <-statusCh:
+		stoped := status == 0
+		statusCh <- status
+		return stoped
+	default:
+		return false
 	}
-	return nil
+	return false
+}
+
+func Play(audio string) error {
+	return sendCmd("l " + audio + "\n")
 }
 
 func PauseOrResume() (err error) {
-	loadCmd := "p\n"
-	_, err = inPipe.Write([]byte(loadCmd))
-	return
+	return sendCmd("p\n")
 }
 
 func Next() (err error) {
-	loadCmd := "s\n"
-	_, err = inPipe.Write([]byte(loadCmd))
-	return
+	return sendCmd("s\n")
 }
 
 func Stop() (err error) {
-	loadCmd := "s\n"
-	if _, err = inPipe.Write([]byte(loadCmd)); err == nil {
-		<-ch
-	}
+	return sendCmd("s\n")
+}
+
+func sendCmd(cmd string) (err error) {
+	_, err = inPipe.Write([]byte(cmd))
 	return
 }
 
@@ -60,27 +68,20 @@ func process() {
 		_line, _, err := outPipe.ReadLine()
 		line := string(_line)
 		if err != nil {
-			if err == io.EOF {
-				ch <- 0
-				fmt.Println("process EOF: ", 0)
-			} else {
-				ch <- -1
-				fmt.Println("process else: ", 1)
-			}
-			continue
+			panic(err)
 		}
-		if strings.HasPrefix(line, "@P 0") {
-			ch <- 0
+		if strings.HasPrefix(line, "@P 0") { //music is stoped
+			statusCh <- 0
 			fmt.Println("process @P 0: ", 0)
-		} else if strings.HasPrefix(line, "@P 1") {
-			ch <- 1
+		} else if strings.HasPrefix(line, "@P 1") { //music is pausing
+			statusCh <- 1
 			fmt.Println("process @P 1: ", 1)
 		}
 	}
 }
 
 func StartAndWait() {
-	cmd = exec.Command("sudo", "mpg123", "-R")
+	cmd := exec.Command("sudo", "mpg123", "-R")
 	var err error
 	inPipe, err = cmd.StdinPipe()
 	if err != nil {
